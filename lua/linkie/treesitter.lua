@@ -1,5 +1,7 @@
 -- linkie/treesitter.lua
 
+local Markdown = require 'linkie.markdown'
+
 -- -- common: link, uri, url, http_import
 -- local link_types = {
 --     'autolink',
@@ -122,8 +124,8 @@ local function get_node_group(node_type)
         },
     }
 
-    for group in groups do
-        for group_type in group do
+    for group, group_types in pairs(groups) do
+        for _, group_type in ipairs(group_types) do
             if node_type:find(group_type) ~= nil then
                 return group
             end
@@ -139,10 +141,18 @@ function M.ts_query_link()
         return { type = 'none' }
     end
 
+    local filetype = get_filetype()
+    if filetype == 'markdown' then
+        Markdown.handle_markdown_node(node)
+    end
+
     local node_type = node:type():lower()
     local node_text = vim.treesitter.get_node_text(node, 0)
 
+    print("type: " .. node_type)
+
     local group = get_node_group(node_type)
+    print('group: ' .. group)
 end
 
 return M
