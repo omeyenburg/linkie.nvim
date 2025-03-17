@@ -145,7 +145,10 @@ function M.query_link()
 
     local filetype = get_filetype()
     if filetype == 'markdown' then
-        return Markdown.handle_markdown_node(node)
+        local group, value = Markdown.handle_markdown_node(node)
+        if group ~= "none" then
+            return group, value
+        end
     end
 
     local node_type = node:type():lower()
