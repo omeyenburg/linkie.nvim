@@ -1,6 +1,7 @@
 -- linkie/treesitter.lua
 
 local Markdown = require 'linkie.markdown'
+local Utils = require 'linkie.utils'
 
 -- -- common: link, uri, url, http_import
 -- local link_types = {
@@ -92,14 +93,16 @@ local function get_filetype()
 end
 
 -- Will throw an error if tree sitter is not found
----@return TSNode
+---@return TSNode?
 local function get_cursor_node()
     return require('nvim-treesitter.ts_utils').get_node_at_cursor()
 end
 
----@param node_type string lower case node type name
+---@param node TSNode
 ---@return "uri"|"path"|"string"|"none" group
-local function get_node_group(node_type)
+local function get_node_group(node)
+    local node_type = node:type():lower()
+
     local groups = {
         uri = {
             'link',
@@ -118,7 +121,6 @@ local function get_node_group(node_type)
             'documentation',
             'quote',
             'heredoc',
-            'escape_sequence',
             'text',
             'word',
         },
@@ -146,15 +148,35 @@ function M.query_link()
     local filetype = get_filetype()
     if filetype == 'markdown' then
         local group, value = Markdown.handle_markdown_node(node)
-        if group ~= "none" then
+        if group ~= 'none' then
             return group, value
         end
     end
 
-    local node_type = node:type():lower()
-    local node_text = vim.treesitter.get_node_text(node, 0)
-    local group = get_node_group(node_type)
+    local group = get_node_group(node)
+    while group == 'none' and node ~= nil do
+        group = get_node_group(node)
+        node = node:parent()
+    end
 
+    if node == nil then
+        return 'none', 0
+    end
+
+    -- If we hover on a quote of a string, this might be separate from it's content.
+    -- Usually languages use string_content or string_fragment for the content of the string.
+    local parent = node:parent()
+    if group == "string" and parent ~= nil and get_node_group(parent) == "string" then
+        local children = Utils.get_type_children(parent)
+
+        if children.string_content then
+            node = children.string_content
+        elseif children.string_fragment then
+            node = children.string_fragment
+        end
+    end
+
+    local node_text = vim.treesitter.get_node_text(node, 0)
     return group, node_text
 end
 

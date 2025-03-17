@@ -129,4 +129,17 @@ function M.validate_uri(uri)
     return true
 end
 
+---@param node TSNode
+---@return table<string, TSNode> children
+function M.get_type_children(node)
+    local children = {}
+
+    for child in node:iter_children() do
+        local child_type = child:type()
+        children[child_type] = child
+    end
+
+    return children
+end
+
 return M

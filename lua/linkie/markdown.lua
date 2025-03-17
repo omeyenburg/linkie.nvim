@@ -47,18 +47,6 @@ local function get_link_node(node)
     return node
 end
 
----@param node TSNode
----@return table<string, TSNode> children
-local function get_type_children(node)
-    local children = {}
-    for child in node:iter_children() do
-        local child_type = child:type()
-        children[child_type] = child
-    end
-
-    return children
-end
-
 ---@param children table<string, TSNode>
 ---@return string? markdown_link
 local function get_markdown_link(children)
@@ -182,7 +170,7 @@ function M.handle_markdown_node(node)
         return 'uri', strip_autolink(get_node_text(node))
     end
 
-    local children = get_type_children(node)
+    local children = Utils.get_type_children(node)
 
     local markdown_link = get_markdown_link(children)
     if markdown_link == nil then
