@@ -98,16 +98,16 @@ local function get_cursor_node()
 end
 
 ---@param node_type string lower case node type name
----@return string group
+---@return "uri"|"path"|"string"|"none" group
 local function get_node_group(node_type)
     local groups = {
-        url = {
+        uri = {
             'link',
             'uri',
             'url',
             'http_import',
         },
-        file = {
+        path = {
             'path',
             'file',
         },
@@ -135,24 +135,24 @@ local function get_node_group(node_type)
     return 'none'
 end
 
-function M.ts_query_link()
+---@return "line"|"uri"|"email"|"path"|"string"|"none" type
+---@return integer|string destination
+function M.query_link()
     local success, node = pcall(get_cursor_node)
     if not (success and node) then
-        return { type = 'none' }
+        return 'none', 0
     end
 
     local filetype = get_filetype()
     if filetype == 'markdown' then
-        Markdown.handle_markdown_node(node)
+        return Markdown.handle_markdown_node(node)
     end
 
     local node_type = node:type():lower()
     local node_text = vim.treesitter.get_node_text(node, 0)
-
-    print("type: " .. node_type)
-
     local group = get_node_group(node_type)
-    print('group: ' .. group)
+
+    return group, node_text
 end
 
 return M
