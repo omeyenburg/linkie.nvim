@@ -2,12 +2,6 @@
 
 local Utils = require 'linkie.utils'
 
----@param node TSNode
----@return string text
-local function get_node_text(node)
-    return vim.treesitter.get_node_text(node, 0)
-end
-
 ---@param link string
 ---@return string stripped
 local function strip_autolink(link)
@@ -51,19 +45,19 @@ end
 ---@return string? markdown_link
 local function get_markdown_link(children)
     if children.link_destination ~= nil then
-        return get_node_text(children.link_destination)
+        return Utils.ts_get_node_text(children.link_destination)
     end
 
     local label, label_text
     if children.link_label ~= nil then
         label = children.link_label
-        label_text = get_node_text(label):lower()
+        label_text = Utils.ts_get_node_text(label):lower()
     elseif children.link_text ~= nil then
         label = children.link_text
-        label_text = '[' .. get_node_text(label):lower() .. ']'
+        label_text = '[' .. Utils.ts_get_node_text(label):lower() .. ']'
     elseif children.image_description ~= nil then
         label = children.image_description
-        label_text = '[' .. get_node_text(label):lower() .. ']'
+        label_text = '[' .. Utils.ts_get_node_text(label):lower() .. ']'
     else
         return nil
     end
@@ -82,8 +76,8 @@ local function get_markdown_link(children)
 
     for _, node, _ in query:iter_captures(root, 0, 0, -1) do
         local destination_node = node:next_named_sibling()
-        if destination_node and get_node_text(node):lower() == label_text then
-            return get_node_text(destination_node)
+        if destination_node and Utils.ts_get_node_text(node):lower() == label_text then
+            return Utils.ts_get_node_text(destination_node)
         end
     end
 
@@ -101,7 +95,7 @@ local function get_anchors()
 
     for _, node, _ in query:iter_captures(root, 0, 0, -1) do
         local line = node:start()
-        local heading = get_node_text(node)
+        local heading = Utils.ts_get_node_text(node)
 
         anchors[line] = heading:gsub(' ', '-'):lower()
     end
@@ -164,26 +158,54 @@ function M.handle_markdown_node(node)
 
     -- Return autolinks early
     if node_type == 'email_autolink' then
-        return 'email', strip_autolink(get_node_text(node))
+        return 'email', strip_autolink(Utils.ts_get_node_text(node))
     end
     if node_type == 'uri_autolink' or node_type == 'www_autolink' then
-        return 'uri', strip_autolink(get_node_text(node))
+        return 'uri', strip_autolink(Utils.ts_get_node_text(node))
     end
 
-    local children = Utils.get_type_children(node)
+    local children = Utils.ts_get_children(node)
 
     local markdown_link = get_markdown_link(children)
     if markdown_link == nil then
         -- For Obsidian we also cover links that are not
         -- possible in standard markdown, such as [[#section]]
-        if children.link_text and get_node_text(children.link_text):sub(1, 1) == '#' then
-            markdown_link = get_node_text(children.link_text)
+        if children.link_text and Utils.ts_get_node_text(children.link_text):sub(1, 1) == '#' then
+            markdown_link = Utils.ts_get_node_text(children.link_text)
         else
             return 'none', 0
         end
     end
 
     return get_markdown_destination(markdown_link)
+end
+
+---@param node TSNode?
+---@return string language
+function M.get_code_language(node)
+    if node == nil then
+        return 'markdown'
+    end
+
+    while node and node:type() ~= 'fenced_code_block' do
+        node = node:parent()
+    end
+
+    if node == nil then
+        return 'markdown'
+    end
+
+    local info_string = Utils.ts_get_named_child(node, 'info_string')
+    if info_string == nil then
+        return 'markdown'
+    end
+
+    local language = Utils.ts_get_node_text(node)
+    if language == '' then
+        return 'markdown'
+    end
+
+    return language
 end
 
 return M
