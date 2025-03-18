@@ -131,7 +131,7 @@ end
 
 ---@param node TSNode
 ---@return table<string, TSNode> children
-function M.get_type_children(node)
+function M.ts_get_children(node)
     local children = {}
 
     for child in node:iter_children() do
@@ -140,6 +140,25 @@ function M.get_type_children(node)
     end
 
     return children
+end
+
+---@param node TSNode
+---@param name string
+---@return TSNode? child
+function M.ts_get_named_child(node, name)
+    for child in node:iter_children() do
+        if child:type() == name then
+            return child
+        end
+    end
+
+    return nil
+end
+
+---@param node TSNode
+---@return string text
+function M.ts_get_node_text(node)
+    return vim.treesitter.get_node_text(node, 0)
 end
 
 return M
