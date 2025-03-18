@@ -146,11 +146,14 @@ function M.query_link()
     end
 
     local filetype = get_filetype()
+    local subfiletype
     if filetype == 'markdown' then
         local group, value = Markdown.handle_markdown_node(node)
         if group ~= 'none' then
             return group, value
         end
+
+        subfiletype = Markdown.get_code_language(node)
     end
 
     local group = get_node_group(node)
@@ -166,13 +169,20 @@ function M.query_link()
     -- If we hover on a quote of a string, this might be separate from it's content.
     -- Usually languages use string_content or string_fragment for the content of the string.
     local parent = node:parent()
-    if group == "string" and parent ~= nil and get_node_group(parent) == "string" then
-        local children = Utils.get_type_children(parent)
+    if group == 'string' and parent ~= nil and get_node_group(parent) == 'string' then
+        local children = Utils.ts_get_children(parent)
 
-        if children.string_content then
+        -- Use string_content or string_fragment if possible.
+        -- NOTE: Maybe its safer to just try to strip of any quotes/string delimiters from the parent?
+        if filetype == 'markdown' and (subfiletype == 'sh' or subfiletype == 'bash') then
+            -- sh and bash use string_content nodes that exclude variables.
+            node = parent
+        elseif children.string_content then
             node = children.string_content
         elseif children.string_fragment then
             node = children.string_fragment
+        else
+            node = parent
         end
     end
 
